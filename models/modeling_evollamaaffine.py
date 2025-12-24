@@ -1277,7 +1277,7 @@ class EvoLlamaAffineForCausalLM(EvoLlamaPreTrainedModel, GenerationMixin):
     EVOLLAMA_START_DOCSTRING,
 )
 # Copied from transformers.models.llama.modeling_llama.LlamaForSequenceClassification with Llama->EvoLlama, LLAMA->EVOLLAMA
-class EvoLlamaForSequenceClassification(EvoLlamaPreTrainedModel):
+class EvoLlamaAffineForSequenceClassification(EvoLlamaPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
@@ -1571,10 +1571,10 @@ class EvoLlamaForTokenClassification(EvoLlamaPreTrainedModel):
 
 
 __all__ = [
-    "EvoLlamaForCausalLM",
+    "EvoLlamaAffineForCausalLM",
     "EvoLlamaModel",
     "EvoLlamaPreTrainedModel",
-    "EvoLlamaForSequenceClassification",
+    "EvoLlamaAffineForSequenceClassification",
     "EvoLlamaForQuestionAnswering",
     "EvoLlamaForTokenClassification",
 ]

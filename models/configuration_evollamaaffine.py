@@ -1,7 +1,7 @@
 from transformers.models.llama.configuration_llama import LlamaConfig
 
 
-class EvoLlamaConfig(LlamaConfig):
+class EvoLlamaAffineConfig(LlamaConfig):
     model_type = "evollamaaffine"
     
     def __init__(self, num_hops: int = 64, **kwargs):
