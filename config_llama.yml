@@ -1,0 +1,29 @@
+!!python/object/apply:collections.OrderedDict [[[model_paths, 
+          [
+            !!python/tuple [yash3056/Llama-3.2-1B-imdb,null], 
+            !!python/tuple [cognitivecomputations/Dolphin3.0-Llama3.2-1B, null]
+          ]], 
+          [layer_mask,
+            [[
+              [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false], 
+              [false, false, false, true ,false, false, false, false, false, false, false, false, false, false, false, false]
+            ], 
+            [
+              [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+              [false, false, false, false,false, false, false, false, false, false, false, false, false, false, false, false]
+            ]]], 
+          [input_layer_model, 0], 
+          [output_layer_model, 0], 
+          [num_r, 2],
+          [scaling_factors, 
+            [[
+              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 
+              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+            ], 
+            [
+              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+            ],
+            ]
+          ]
+        ]]
