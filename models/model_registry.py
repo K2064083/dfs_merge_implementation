@@ -3,13 +3,17 @@ from .modeling_evomistral import EvoMistralForCausalLM, EvoMistralForSequenceCla
 from .configuration_evomistral import EvoMistralConfig
 from .modeling_evollama import EvoLlamaForCausalLM, EvoLlamaForSequenceClassification
 from .configuration_evollama import EvoLlamaConfig
+
+# for affine transform model
 from .modeling_evomistralaffine import EvoMistralAffineForCausalLM
 from .configuration_evomistralaffine import EvoMistralAffineConfig
+from .modeling_evollamaaffine import EvoLlamaAffineForCausalLM, EvoLlamaAffineForSequenceClassification
+from .configuration_evollamaaffine import EvoLlamaAffineConfig
 
 MODEL_REGISTRY = {
     "LlamaForCausalLM": {
-        "model_class": EvoLlamaForCausalLM,
-        "config_class": EvoLlamaConfig,
+        "model_class": EvoLlamaAffineForCausalLM,
+        "config_class": EvoLlamaAffineConfig,
     },
     "MistralForCausalLM": {
         "model_class": EvoMistralAffineForCausalLM,
