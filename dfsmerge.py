@@ -20,6 +20,7 @@ v3.0.1: Changed to use input model config instead of base model
 v3.0.2: Support for SequenceClassification
 v3.1.0: Seve with bfloat16, add Autoconfig, use_cache:False
 v3.1.1: Add args 'add_last_layer'
+v4.0.0: Extended support for merging 3 or more models
 
 References:
 Akiba, Takuya, et al. "Evolutionary optimization of model merging recipes."
@@ -29,7 +30,7 @@ https://arxiv.org/abs/2403.13187
 Author: kudo
 """
 
-__version__ = "3.0.2"
+__version__ = "4.0.0"
 
 import re
 
@@ -71,13 +72,15 @@ def data_flow_space_layer_merge(
     Args:
         model_paths (list): A list of (model_name, revision_id) tuples.
         num_r (int): Number of times to repeat the layer cycle
-        layer_mask (list): Layer mask, a list of shape (num_r, 2, num_layers)
+        layer_mask (list): Layer mask, a list of shape (num_r, num_models, num_layers)
         scaling_factors (list): Scaling W same shape with layer_mask
+        bias_factors (list): Bias factors same shape with layer_mask
         add_last_layer (bool): If true, the final decoder layer of the output_layer_model is added to the end.
         last_layer_scale (float): last_layer scale variable
-        input_model (int): Model index to use for the input layer. Defaults to the first model.
-        output_model(int): Model index to use for the output layer. Defaults to the first model.
-        output_path (bool, optional): Path to save the output model. If None, the model is not saved.
+        input_layer_model (int): Model index to use for the input layer. Defaults to the first model (0).
+        output_layer_model (int): Model index to use for the output layer. Defaults to the first model (0).
+        output_path (str, optional): Path to save the output model. If None, the model is not saved.
+        save_only_config (bool, optional): If true, save only config.
         device (str, optional):  Device to use for merging. Specify a CUDA device (e.g., "cuda:0") for GPU merging.
         cache_dir (str, optional):  Directory to cache models.  Defaults to the standard Hugging Face cache directory.
         classification (bool, optional): For classification model. Add score.weight.
@@ -107,6 +110,8 @@ def data_flow_space_layer_merge(
             
         models.append(model)
 
+    num_models = len(models)
+
     # Check Archtecture
     model_architecture = model_configs[input_layer_model].architectures[0]
     if model_architecture not in MODEL_REGISTRY:
@@ -115,23 +120,25 @@ def data_flow_space_layer_merge(
     # Check input
     assert (
         np.array(layer_mask).shape
-        == (num_r, len(model_paths), model_configs[0].num_hidden_layers)
-    ), f"Invalid input shapes.  Layer_mask must have shape ({num_r}, {len(models)}, num_layers)"
+        == (num_r, num_models, model_configs[0].num_hidden_layers)
+    ), f"Invalid input shapes.  Layer_mask must have shape ({num_r}, {num_models}, num_layers)"
     # assert (
     #     np.array(scaling_factors).shape == np.array(layer_mask).shape
     # ), f"Invalid input shapes. Scaling_factors must have same shape as Layer_mask"
+    
+    # 3モデル以上に対応するための変更点
     assert (
-        input_layer_model == 0 or input_layer_model == 1
-    ), f"input_layer_model must be 0 or 1, but got {input_layer_model}."
+        0 <= input_layer_model < num_models
+    ), f"input_layer_model must be between 0 and {num_models - 1}, but got {input_layer_model}."
     assert (
-        output_layer_model == 0 or output_layer_model == 1
-    ), f"output_layer_model must be 0 or 1, but got {output_layer_model}."
+        0 <= output_layer_model < num_models
+    ), f"output_layer_model must be between 0 and {num_models - 1}, but got {output_layer_model}."
 
     # make merge recipes
     used_layers=[]
     used_indices=[]
     for n in range(num_r):
-        for m in range(len(models)):
+        for m in range(num_models):
             for l in range(model_configs[0].num_hidden_layers):
                 if layer_mask[n][m][l]:
                     if (m,l) not in used_layers:
@@ -153,10 +160,14 @@ def data_flow_space_layer_merge(
     for i in range(model_configs[0].num_hidden_layers):
         param_names[f"layer_{i}_params"] = []
     num_layer = -1
+    
+    # 3モデル以上に対応するための変更点: すべてのモデルのパラメータ名をチェック
     for i, [param_name, _] in enumerate(models[0].named_parameters()):
-        assert (
-            param_name == list(models[1].named_parameters())[i][0]
-        ), f"The model uses different parameter names, such as {param_name}and{list(models[1].named_parameters())[i][0]}"
+        for m_idx in range(1, num_models):
+            assert (
+                param_name == list(models[m_idx].named_parameters())[i][0]
+            ), f"Model {m_idx} uses different parameter names. Expected {param_name}, got {list(models[m_idx].named_parameters())[i][0]}"
+            
         if num_layer == -1:
             if "model.layers" not in param_name:
                 param_names["embedding_layer_params"].append(param_name)
@@ -292,24 +303,28 @@ def main():
     
     os.makedirs(model_path, exist_ok=True)
     D = 4096
+    
+    # Example updated for 3 models support
     base_config = {
         'model_paths': [
             ('SakanaAI/EvoLLM-JP-v1-7B', None),
-            ('augmxnt/shisa-gamma-7b-v1', None)
+            ('augmxnt/shisa-gamma-7b-v1', None),
+            ('WizardLMTeam/WizardMath-7B-V1.1', None) # 3つ目のモデルの例
         ],
         'input_layer_model': 0,
         'output_layer_model': 0,
         'num_r': 1,
-        'layer_mask': [[[True] * 32, [True] * 32],],
-        'scaling_factors': [[[np.eye(D).tolist()] * 32, [np.eye(D).tolist()] * 32],],
-        'bias_factors':[[[[0.0]*D, [0.0]*D]]]
+        # shape: (1, 3, 32)
+        'layer_mask': [[[True] * 32, [True] * 32, [True] * 32],],
+        'scaling_factors': [[[np.eye(D).tolist()] * 32, [np.eye(D).tolist()] * 32, [np.eye(D).tolist()] * 32],],
+        'bias_factors':[[[[0.0]*D]* 32, [[0.0]*D]* 32, [[0.0]*D]* 32]]
     }
 
     merge_config_path = os.path.join(model_path, 'merge_config.yml')
     with open(merge_config_path, 'w') as f:
         yaml.dump(base_config, f, indent=2, default_flow_style=False)
         
-    dfs_excute_from_config(
+    output_model, tokenizer = dfs_excute_from_config(
         merge_config=merge_config_path,
         output_path=model_path,
         add_last_layer=False,
@@ -319,9 +334,10 @@ def main():
     time_diff = end - start
     print("実行時間", time_diff)
 
+    # Note: `model` object does not exist in the original script directly, changed to use `output_model`
     prompt = "my_list = [1, 2, 3, 4, 5]\nprint(my_list)\n >>>"
     input_ids = tokenizer.encode(prompt, return_tensors="pt")
-    output = model.generate(input_ids,max_length=200,pad_token_id=tokenizer.eos_token_id)
+    output = output_model.generate(input_ids,max_length=200,pad_token_id=tokenizer.eos_token_id)
     generated_code = tokenizer.decode(output[0], skip_special_tokens=True)
     print("Generated:\n", generated_code)
 
